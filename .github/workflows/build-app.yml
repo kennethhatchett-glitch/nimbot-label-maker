@@ -30,6 +30,16 @@ jobs:
         with:
           channel: stable
 
+      # Reuse the same signing key for every build, so a new version of
+      # the app can be installed over the old one without uninstalling.
+      # (GitHub drops a saved cache after 7 days without any builds; then
+      # a new key is made and the app must be uninstalled once.)
+      - name: Reuse signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
       # Generate the standard Android project files, then add our code.
       - name: Create Android project
         run: |

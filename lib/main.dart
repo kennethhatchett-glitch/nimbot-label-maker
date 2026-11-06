@@ -70,15 +70,28 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _text = TextEditingController(text: 'Hello');
   final List<String> _log = [];
+  final List<String> _details = [];
   final List<StreamSubscription> _packetLogSubs = [];
   NiimbotBluetoothClient? _client;
+  String _printerName = '';
   bool _busy = false;
+  bool _showDetails = false;
 
   bool get _connected => _client?.isConnected() ?? false;
 
+  /// A plain-English status message (always shown).
   void _say(String message) {
     if (!mounted) return;
-    setState(() => _log.insert(0, message));
+    setState(() {
+      _log.insert(0, message);
+      _details.insert(0, message);
+    });
+  }
+
+  /// A technical message (only shown under "Show details").
+  void _detail(String message) {
+    if (!mounted) return;
+    setState(() => _details.insert(0, message));
   }
 
   /// Short description of a printer message, e.g. "setDensity 03".
@@ -100,10 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// (except the regular "are you still there?" heartbeat messages).
   void _startPacketLog(NiimbotBluetoothClient client) {
     _packetLogSubs.add(client.onPacketSent.listen((p) {
-      if (!_isHeartbeat(p)) _say('  → sent: ${_describe(p)}');
+      if (!_isHeartbeat(p)) _detail('  → sent: ${_describe(p)}');
     }));
     _packetLogSubs.add(client.onPacketReceived.listen((p) {
-      if (!_isHeartbeat(p)) _say('  ← reply: ${_describe(p)}');
+      if (!_isHeartbeat(p)) _detail('  ← reply: ${_describe(p)}');
     }));
   }
 
@@ -162,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final client = NiimbotBluetoothClient();
       client.setDevice(device);
       client.setOnDisconnect(() => _say('Printer disconnected.'));
+      _printerName = device.platformName;
       _startPacketLog(client);
       await client.connect();
       client.abstraction.setPacketTimeout(replyTimeoutMs);
@@ -171,21 +185,21 @@ class _HomeScreenState extends State<HomeScreen> {
       for (var attempt = 1;
           attempt <= 2 && client.getModelMetadata() == null;
           attempt++) {
-        _say('Printer details missing, asking again (try $attempt of 2)...');
+        _detail('Printer details missing, asking again (try $attempt of 2)...');
         await Future.delayed(const Duration(seconds: 1));
         try {
           await client.initialNegotiate();
           await client.fetchPrinterInfo();
         } catch (e) {
-          _say('Asking again failed: $e');
+          _detail('Asking again failed: $e');
         }
       }
 
       final model = client.getModelMetadata()?.model.name ?? 'unknown';
       final task = client.getPrintTaskType()?.name ?? 'unknown';
       final protocol = client.info.protocolVersion?.toString() ?? '?';
-      _say('Connected! Model: $model, print task: $task, '
-          'protocol: $protocol');
+      _detail('Model: $model, print task: $task, protocol: $protocol');
+      _say('Connected. Ready to print.');
     } catch (e) {
       _say('Connect error: $e');
     } finally {
@@ -242,13 +256,13 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       _say('Printing "$text"...');
-      _say('Step 1: start');
+      _detail('Step 1: start');
       await task.printInit();
-      _say('Step 2: send label picture');
+      _detail('Step 2: send label picture');
       await task.printPage(page.toEncodedImage(), 1);
-      _say('Step 3: wait for printer to finish');
+      _detail('Step 3: wait for printer to finish');
       await task.waitForFinished();
-      _say('Step 4: end');
+      _detail('Step 4: end');
       await task.printEnd();
       _say('Done printing.');
     } catch (e) {
@@ -272,17 +286,51 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Label Printer (test 3)')),
+      appBar: AppBar(title: const Text('Label Printer (test 4)')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilledButton.icon(
-              onPressed: _busy ? null : _connect,
-              icon: const Icon(Icons.bluetooth),
-              label: Text(_connected ? 'Reconnect' : 'Connect to printer'),
+            // Big, clear connection status.
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _connected
+                    ? Colors.green.withValues(alpha: 0.15)
+                    : Colors.grey.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _connected ? Icons.check_circle : Icons.bluetooth_disabled,
+                    color: _connected ? Colors.green : Colors.grey,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _connected
+                          ? 'Connected to $_printerName'
+                          : 'Not connected',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 12),
+            _connected
+                ? OutlinedButton.icon(
+                    onPressed: _busy ? null : _connect,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reconnect'),
+                  )
+                : FilledButton.icon(
+                    onPressed: _busy ? null : _connect,
+                    icon: const Icon(Icons.bluetooth),
+                    label: const Text('Connect to printer'),
+                  ),
             const SizedBox(height: 16),
             TextField(
               controller: _text,
@@ -298,8 +346,17 @@ class _HomeScreenState extends State<HomeScreen> {
               label: const Text('Print'),
             ),
             const SizedBox(height: 16),
-            const Text('Status (newest first):'),
-            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Expanded(child: Text('Messages (newest first):')),
+                TextButton(
+                  onPressed: () =>
+                      setState(() => _showDetails = !_showDetails),
+                  child: Text(_showDetails ? 'Hide details' : 'Show details'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(8),
@@ -309,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: ListView(
                   children: [
-                    for (final line in _log)
+                    for (final line in _showDetails ? _details : _log)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: SelectableText(line),
