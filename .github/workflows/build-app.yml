@@ -8,6 +8,7 @@ on:
     paths:
       - "lib/**"
       - "pubspec.yaml"
+      - "third_party/**"
       - ".github/workflows/build-app.yml"
   workflow_dispatch:
 
@@ -33,7 +34,7 @@ jobs:
       - name: Create Android project
         run: |
           flutter create --org com.labelprinter --project-name label_printer --platforms android build_app
-          cp -r lib pubspec.yaml build_app/
+          cp -r lib third_party pubspec.yaml build_app/
           cd build_app
           sed -i 's/android:label="label_printer"/android:label="Label Printer"/' android/app/src/main/AndroidManifest.xml
           sed -i '0,/<application/s//<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" \/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" \/>\n    <application/' android/app/src/main/AndroidManifest.xml

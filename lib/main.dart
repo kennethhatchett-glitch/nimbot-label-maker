@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Label Printer (test 2)')),
+      appBar: AppBar(title: const Text('Label Printer (test 3)')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

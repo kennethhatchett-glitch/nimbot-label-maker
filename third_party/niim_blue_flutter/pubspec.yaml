@@ -1,0 +1,27 @@
+name: niim_blue_flutter
+description: Flutter library for BLE printing with NIIMBOT thermal printers. Supports 85+ printer models with automatic detection and rich content rendering.
+version: 1.0.1
+homepage: https://github.com/kidwar/flutter-niimblue-lib
+
+topics:
+  - ble
+  - printing
+  - niimbot
+  - thermal-printer
+  - label-printer
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_blue_plus: ^1.36.8
+  http: ^1.6.0
+  image: ^4.7.1
+  qr: ^3.0.2
+  barcode: ^2.2.9
+  synchronized: ^3.4.0
+  crypto: ^3.0.7
+  

@@ -9,7 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  niim_blue_flutter: ^1.0.1
+  niim_blue_flutter:
+    path: third_party/niim_blue_flutter
   flutter_blue_plus: ^1.36.8
   permission_handler: ^12.0.1
 
