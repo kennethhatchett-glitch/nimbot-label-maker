@@ -1,0 +1,17 @@
+name: label_printer
+description: Test app that prints labels on a NIIMBOT D110_M over Bluetooth.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  niim_blue_flutter: ^1.0.1
+  flutter_blue_plus: ^1.36.8
+  permission_handler: ^12.0.1
+
+flutter:
+  uses-material-design: true

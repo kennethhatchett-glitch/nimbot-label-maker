@@ -1,0 +1,60 @@
+# Builds the Android app (.apk) and publishes it as a GitHub Release,
+# so it can be downloaded and installed straight from a phone.
+name: Build app
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "lib/**"
+      - "pubspec.yaml"
+      - ".github/workflows/build-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # Generate the standard Android project files, then add our code.
+      - name: Create Android project
+        run: |
+          flutter create --org com.labelprinter --project-name label_printer --platforms android build_app
+          cp -r lib pubspec.yaml build_app/
+          cd build_app
+          sed -i 's/android:label="label_printer"/android:label="Label Printer"/' android/app/src/main/AndroidManifest.xml
+          sed -i '0,/<application/s//<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" \/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" \/>\n    <application/' android/app/src/main/AndroidManifest.xml
+          cat android/app/src/main/AndroidManifest.xml
+
+      - name: Build APK
+        working-directory: build_app
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk ../label-printer.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Label Printer test build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          files: label-printer.apk
+          body: |
+            Test build of the Label Printer app.
+            On your phone, tap **label-printer.apk** below to download, then open it to install.
