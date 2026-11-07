@@ -1,0 +1,14 @@
+# Cloudflare settings for the Label Printer bridge.
+name = "label-printer-bridge"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# The print-job queue.
+[[durable_objects.bindings]]
+name = "QUEUE"
+class_name = "PrintQueue"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PrintQueue"]

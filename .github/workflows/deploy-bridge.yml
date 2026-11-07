@@ -1,0 +1,38 @@
+# Sends the Label Printer bridge (bridge/) to Cloudflare.
+name: Deploy bridge
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "bridge/**"
+      - ".github/workflows/deploy-bridge.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets are set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PRINTER_KEY: ${{ secrets.PRINTER_KEY }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::The CLOUDFLARE_API_TOKEN secret is missing."; exit 1
+          fi
+          if [ -z "$PRINTER_KEY" ]; then
+            echo "::error::The PRINTER_KEY secret is missing. Add it in Settings > Secrets and variables > Actions."; exit 1
+          fi
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: bridge
+          secrets: |
+            PRINTER_KEY
+        env:
+          PRINTER_KEY: ${{ secrets.PRINTER_KEY }}
