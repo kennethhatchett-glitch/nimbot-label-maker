@@ -46,8 +46,29 @@ jobs:
           flutter create --org com.labelprinter --project-name label_printer --platforms android build_app
           cp -r lib third_party pubspec.yaml build_app/
           cd build_app
-          sed -i 's/android:label="label_printer"/android:label="Label Printer"/' android/app/src/main/AndroidManifest.xml
-          sed -i '0,/<application/s//<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" \/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" \/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" \/>\n    <application/' android/app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          path = "android/app/src/main/AndroidManifest.xml"
+          s = open(path).read()
+          s = s.replace('android:label="label_printer"', 'android:label="Label Printer"')
+          perms = [
+              '<uses-permission android:name="android.permission.INTERNET" />',
+              '<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />',
+              '<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />',
+              '<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />',
+              '<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />',
+              '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />',
+              '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />',
+              '<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />',
+          ]
+          s = s.replace("<application", "\n    ".join(perms) + "\n    <application", 1)
+          service = ('<service android:name="com.pravera.flutter_foreground_task.service.ForegroundService" '
+                     'android:foregroundServiceType="connectedDevice" '
+                     'android:stopWithTask="true" android:exported="false" />')
+          s = s.replace("</application>", "    " + service + "\n    </application>", 1)
+          open(path, "w").write(s)
+          PY
           cat android/app/src/main/AndroidManifest.xml
 
       - name: Build APK
