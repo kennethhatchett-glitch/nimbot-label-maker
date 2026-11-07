@@ -33,6 +33,7 @@ const int replyTimeoutMs = 3000;
 const String bridgeUrl = 'https://label-printer-bridge.kennethhatchett.workers.dev';
 const Duration pollEvery = Duration(seconds: 3);
 const String prefsKeyName = 'printer_key';
+const String prefsListeningName = 'listening';
 
 const List<String> monthNames = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -163,13 +164,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Loads the saved password. If listening was on last time, connects to
+  /// the printer and starts listening again automatically.
   Future<void> _loadKey() async {
+    var resumeListening = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(prefsKeyName);
       if (saved != null && mounted) setState(() => _key.text = saved);
+      resumeListening = prefs.getBool(prefsListeningName) ?? false;
     } catch (e) {
-      _detail('Could not load saved password: $e');
+      _detail('Could not load saved settings: $e');
+    }
+    if (!resumeListening || _key.text.trim().isEmpty || !mounted) return;
+
+    _say('Starting up: connecting and listening automatically...');
+    setState(() => _busy = true);
+    try {
+      await _connect();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (mounted) await _setListening(true);
+  }
+
+  Future<void> _saveListening(bool on) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(prefsListeningName, on);
+    } catch (e) {
+      _detail('Could not save listening setting: $e');
     }
   }
 
@@ -448,6 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() => _listening = true);
+      await _saveListening(true);
       _say('Listening for print jobs from Claude.');
       _pollTimer?.cancel();
       _pollTimer = Timer.periodic(pollEvery, (_) => _checkForJobs());
@@ -461,6 +486,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _detail('Stop service error (ignored): $e');
       }
       setState(() => _listening = false);
+      await _saveListening(false);
       _say('Stopped listening for print jobs.');
     }
   }
@@ -542,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Label Printer (test 5)')),
+      appBar: AppBar(title: const Text('Label Printer (test 6)')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
